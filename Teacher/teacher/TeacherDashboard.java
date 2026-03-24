@@ -1,5 +1,6 @@
 package teacher;
 
+import core.ExamGuardRepository;
 import model.Exam;
 import model.Result;
 import teacher.panels.AnalyticsPanel;
@@ -42,6 +43,7 @@ public class TeacherDashboard extends JFrame {
 
     private final ExamManager     examManager;
     private final QuestionManager questionManager;
+    private final ExamGuardRepository repository;
 
     // ------------------------------------------------------------------ //
     //  Panels
@@ -72,12 +74,17 @@ public class TeacherDashboard extends JFrame {
     public TeacherDashboard(String teacherId, String teacherName) {
         this.teacherId   = teacherId;
         this.teacherName = teacherName;
+        this.repository  = ExamGuardRepository.getInstance();
 
         this.examManager     = new ExamManager();
         this.questionManager = new QuestionManager(examManager);
+        this.examManager.setPersistenceHook(repository::persistExams);
+        this.questionManager.setPersistenceHook(repository::persistExams);
+        this.examManager.setExamStore(repository.getExamStore());
 
         initFrame();
         buildUI();
+        setResultStore(repository.getResultStore());
     }
 
     // ------------------------------------------------------------------ //

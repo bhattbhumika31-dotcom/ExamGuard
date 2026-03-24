@@ -1,20 +1,80 @@
-import javax.swing.*;
+import model.Exam;
+import model.Result;
+
+import javax.swing.BorderFactory;
+import javax.swing.JButton;
+import javax.swing.JFrame;
+import javax.swing.JLabel;
+import javax.swing.JOptionPane;
+import javax.swing.JPanel;
+import javax.swing.JScrollPane;
+import javax.swing.JTable;
+import javax.swing.JTextArea;
+import javax.swing.SwingConstants;
+import javax.swing.SwingUtilities;
 import javax.swing.table.DefaultTableModel;
-import java.awt.*;
+import java.awt.BorderLayout;
+import java.awt.Color;
+import java.awt.Dimension;
+import java.awt.FlowLayout;
+import java.awt.Font;
+import java.awt.GridLayout;
+import java.util.List;
 
 public class StudentDashboard extends JFrame {
 
-    private JTable table;
+    private final StudentService studentService = new StudentService();
+    private final DefaultTableModel tableModel;
+    private final JTable table;
+
+    private String studentId;
+    private String studentName;
+    private JLabel userLabel;
 
     public StudentDashboard() {
         setTitle("ExamGuard - Student Dashboard");
-        setSize(1200, 700);
+        setSize(1100, 680);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setLocationRelativeTo(null);
 
         JPanel main = new JPanel(new BorderLayout());
+        main.setBackground(new Color(25, 30, 50));
 
-        // ===== SIDEBAR =====
+        JPanel sidebar = buildSidebar();
+        JPanel topBar = buildTopBar();
+
+        String[] columns = {"Exam ID", "Title", "Subject", "Duration", "Questions", "Total Marks", "Teacher"};
+        tableModel = new DefaultTableModel(columns, 0) {
+            @Override
+            public boolean isCellEditable(int row, int column) {
+                return false;
+            }
+        };
+        table = new JTable(tableModel);
+        table.setBackground(new Color(30, 35, 55));
+        table.setForeground(Color.WHITE);
+        table.setRowHeight(30);
+        table.getTableHeader().setBackground(new Color(50, 55, 80));
+        table.getTableHeader().setForeground(Color.WHITE);
+
+        JScrollPane scrollPane = new JScrollPane(table);
+        scrollPane.setBorder(BorderFactory.createEmptyBorder());
+
+        JPanel center = new JPanel(new BorderLayout());
+        center.setBackground(new Color(25, 30, 50));
+        center.add(topBar, BorderLayout.NORTH);
+        center.add(scrollPane, BorderLayout.CENTER);
+        center.add(buildActionBar(), BorderLayout.SOUTH);
+
+        main.add(sidebar, BorderLayout.WEST);
+        main.add(center, BorderLayout.CENTER);
+        add(main);
+
+        captureStudentProfile();
+        refreshExamTable();
+    }
+
+    private JPanel buildSidebar() {
         JPanel sidebar = new JPanel();
         sidebar.setPreferredSize(new Dimension(220, 700));
         sidebar.setBackground(new Color(15, 20, 35));
@@ -22,144 +82,183 @@ public class StudentDashboard extends JFrame {
 
         JLabel logo = new JLabel("ExamGuard", SwingConstants.CENTER);
         logo.setForeground(Color.WHITE);
+        logo.setFont(new Font("Segoe UI", Font.BOLD, 20));
 
-        JButton exams = new JButton("Exams");
-        JButton questions = new JButton("Questions");
-        JButton analytics = new JButton("Analytics");
+        JButton exams = new JButton("Available Exams");
+        JButton results = new JButton("My Results");
+        JButton refresh = new JButton("Refresh");
 
         styleSide(exams);
-        styleSide(questions);
-        styleSide(analytics);
+        styleSide(results);
+        styleSide(refresh);
+
+        exams.addActionListener(event -> refreshExamTable());
+        results.addActionListener(event -> showResultsDialog());
+        refresh.addActionListener(event -> refreshExamTable());
 
         sidebar.add(logo);
         sidebar.add(exams);
-        sidebar.add(questions);
-        sidebar.add(analytics);
+        sidebar.add(results);
+        sidebar.add(refresh);
         sidebar.add(new JLabel());
+        sidebar.add(new JLabel());
+        return sidebar;
+    }
 
-        // ===== TOP BAR =====
+    private JPanel buildTopBar() {
         JPanel top = new JPanel(new BorderLayout());
-        top.setPreferredSize(new Dimension(1000, 60));
+        top.setPreferredSize(new Dimension(1000, 90));
         top.setBackground(new Color(20, 25, 45));
+        top.setBorder(BorderFactory.createEmptyBorder(15, 15, 15, 15));
 
-        JLabel title = new JLabel("Exam Management");
+        JPanel titleBlock = new JPanel(new GridLayout(2, 1));
+        titleBlock.setOpaque(false);
+
+        JLabel title = new JLabel("Student Exam Center");
         title.setForeground(Color.WHITE);
-        title.setBorder(BorderFactory.createEmptyBorder(10, 15, 10, 10));
+        title.setFont(new Font("Segoe UI", Font.BOLD, 24));
 
-        JPanel right = new JPanel();
-        right.setBackground(new Color(20, 25, 45));
+        JLabel subtitle = new JLabel("Browse active exams and submit attempts directly into teacher analytics");
+        subtitle.setForeground(Color.LIGHT_GRAY);
 
-        JLabel user = new JLabel("Bhumika Bhatt");
-        user.setForeground(Color.WHITE);
+        titleBlock.add(title);
+        titleBlock.add(subtitle);
 
-        JButton role = new JButton("TEACHER");
-        JButton logout = new JButton("Logout");
+        JPanel right = new JPanel(new FlowLayout(FlowLayout.RIGHT, 12, 0));
+        right.setOpaque(false);
 
-        styleRole(role);
-        styleLogout(logout);
+        JLabel role = new JLabel("STUDENT");
+        role.setOpaque(true);
+        role.setBackground(new Color(0, 150, 100));
+        role.setForeground(Color.WHITE);
+        role.setBorder(BorderFactory.createEmptyBorder(6, 10, 6, 10));
+
+        userLabel = new JLabel();
+        userLabel.setForeground(Color.WHITE);
+
+        JButton logout = new JButton("Change Student");
+        styleAction(logout, new Color(220, 53, 69));
+        logout.addActionListener(event -> {
+            captureStudentProfile();
+            refreshExamTable();
+        });
 
         right.add(role);
-        right.add(user);
+        right.add(userLabel);
         right.add(logout);
 
-        top.add(title, BorderLayout.WEST);
+        top.add(titleBlock, BorderLayout.WEST);
         top.add(right, BorderLayout.EAST);
+        return top;
+    }
 
-        // ===== TABLE =====
-        String[] cols = {"Exam ID", "Title", "Subject", "Duration (min)", "Questions", "Total Marks", "Status"};
-        DefaultTableModel model = new DefaultTableModel(cols, 0);
+    private JPanel buildActionBar() {
+        JPanel bar = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 12));
+        bar.setBackground(new Color(20, 25, 45));
 
-        table = new JTable(model);
-        table.setBackground(new Color(30, 35, 55));
-        table.setForeground(Color.WHITE);
-        table.setRowHeight(30);
-
-        table.getTableHeader().setBackground(new Color(50, 55, 80));
-        table.getTableHeader().setForeground(Color.WHITE);
-
-        JScrollPane scroll = new JScrollPane(table);
-
-        // ===== BUTTON PANEL =====
-        JPanel bottom = new JPanel();
-        bottom.setBackground(new Color(20, 25, 45));
-
-        JButton edit = new JButton("Edit");
-        JButton toggle = new JButton("Toggle Status");
-        JButton delete = new JButton("Delete");
+        JButton attempt = new JButton("Attempt Selected");
+        JButton results = new JButton("View My Results");
         JButton refresh = new JButton("Refresh");
 
-        styleAction(edit, new Color(255, 193, 7));
-        styleAction(toggle, new Color(0, 123, 255));
-        styleAction(delete, new Color(220, 53, 69));
+        styleAction(attempt, new Color(0, 123, 255));
+        styleAction(results, new Color(255, 193, 7));
         styleAction(refresh, new Color(100, 100, 120));
 
-        bottom.add(edit);
-        bottom.add(toggle);
-        bottom.add(delete);
-        bottom.add(refresh);
+        attempt.addActionListener(event -> attemptSelectedExam());
+        results.addActionListener(event -> showResultsDialog());
+        refresh.addActionListener(event -> refreshExamTable());
 
-        // ===== CENTER =====
-        JPanel center = new JPanel(new BorderLayout());
-        center.setBackground(new Color(25, 30, 50));
-
-        JLabel subTitle = new JLabel("Create, edit, and publish your exams");
-        subTitle.setForeground(Color.LIGHT_GRAY);
-        subTitle.setBorder(BorderFactory.createEmptyBorder(5, 15, 10, 10));
-
-        JPanel header = new JPanel(new BorderLayout());
-        header.setBackground(new Color(25, 30, 50));
-        header.add(title, BorderLayout.NORTH);
-        header.add(subTitle, BorderLayout.SOUTH);
-
-        JButton newExam = new JButton("+ New Exam");
-        styleAction(newExam, new Color(0, 123, 255));
-
-        JPanel headerRight = new JPanel();
-        headerRight.setBackground(new Color(25, 30, 50));
-        headerRight.add(newExam);
-
-        header.add(headerRight, BorderLayout.EAST);
-
-        center.add(header, BorderLayout.NORTH);
-        center.add(scroll, BorderLayout.CENTER);
-        center.add(bottom, BorderLayout.SOUTH);
-
-        // ===== MAIN =====
-        main.add(sidebar, BorderLayout.WEST);
-        main.add(center, BorderLayout.CENTER);
-
-        add(main);
-
-        // sample data
-        model.addRow(new Object[]{"1", "Midterm", "Math", "60", "20", "100", "Active"});
+        bar.add(attempt);
+        bar.add(results);
+        bar.add(refresh);
+        return bar;
     }
 
-    // ===== STYLING =====
-    private void styleSide(JButton b) {
-        b.setBackground(new Color(30, 35, 60));
-        b.setForeground(Color.WHITE);
-        b.setFocusPainted(false);
+    private void captureStudentProfile() {
+        String enteredId = promptValue("Enter Student ID:", studentId == null ? "S001" : studentId);
+        String enteredName = promptValue("Enter Student Name:", studentName == null ? "Student" : studentName);
+
+        this.studentId = enteredId;
+        this.studentName = enteredName;
+        userLabel.setText(studentName + " (" + studentId + ")");
     }
 
-    private void styleAction(JButton b, Color c) {
-        b.setBackground(c);
-        b.setForeground(Color.WHITE);
-        b.setFocusPainted(false);
+    private String promptValue(String prompt, String initialValue) {
+        String value = JOptionPane.showInputDialog(this, prompt, initialValue);
+        if (value == null || value.isBlank()) {
+            return initialValue;
+        }
+        return value.trim();
     }
 
-    private void styleRole(JButton b) {
-        b.setBackground(new Color(0, 150, 100));
-        b.setForeground(Color.WHITE);
-        b.setFocusPainted(false);
+    private void refreshExamTable() {
+        tableModel.setRowCount(0);
+        List<Exam> exams = studentService.getAvailableExams();
+        for (Exam exam : exams) {
+            tableModel.addRow(new Object[]{
+                exam.getExamId(),
+                exam.getTitle(),
+                exam.getSubject(),
+                exam.getDurationMinutes() + " min",
+                exam.getQuestions().size(),
+                exam.getTotalMarks(),
+                exam.getCreatedByTeacherName()
+            });
+        }
     }
 
-    private void styleLogout(JButton b) {
-        b.setBackground(Color.RED);
-        b.setForeground(Color.WHITE);
-        b.setFocusPainted(false);
+    private void attemptSelectedExam() {
+        int row = table.getSelectedRow();
+        if (row < 0) {
+            JOptionPane.showMessageDialog(this, "Select an exam first.");
+            return;
+        }
+
+        String examId = tableModel.getValueAt(row, 0).toString();
+        Result result = studentService.startExamWithDialog(this, studentId, studentName, examId);
+        if (result != null) {
+            showResultsDialog();
+        }
+    }
+
+    private void showResultsDialog() {
+        List<Result> results = studentService.getStudentResults(studentId);
+        JTextArea area = new JTextArea(16, 54);
+        area.setEditable(false);
+        area.setBackground(new Color(25, 30, 50));
+        area.setForeground(Color.WHITE);
+        area.setFont(new Font("Monospaced", Font.PLAIN, 13));
+
+        if (results.isEmpty()) {
+            area.setText("No submitted results yet.");
+        } else {
+            StringBuilder builder = new StringBuilder();
+            for (Result result : results) {
+                builder.append(result.getExamId()).append(" - ").append(result.getExamTitle()).append('\n');
+                builder.append("Score: ").append(result.getScore()).append("/").append(result.getTotalMarks())
+                    .append(" | Percentage: ").append(String.format("%.1f%%", result.getPercentage()))
+                    .append(" | Grade: ").append(result.getGrade()).append('\n');
+                builder.append("Attempted: ").append(result.getAttemptDate()).append("\n\n");
+            }
+            area.setText(builder.toString());
+        }
+
+        JOptionPane.showMessageDialog(this, new JScrollPane(area), "My Results", JOptionPane.INFORMATION_MESSAGE);
+    }
+
+    private void styleSide(JButton button) {
+        button.setBackground(new Color(30, 35, 60));
+        button.setForeground(Color.WHITE);
+        button.setFocusPainted(false);
+    }
+
+    private void styleAction(JButton button, Color color) {
+        button.setBackground(color);
+        button.setForeground(Color.WHITE);
+        button.setFocusPainted(false);
     }
 
     public static void main(String[] args) {
         SwingUtilities.invokeLater(() -> new StudentDashboard().setVisible(true));
     }
-}//
+}

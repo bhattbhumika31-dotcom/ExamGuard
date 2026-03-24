@@ -1,0 +1,32 @@
+# Java build output
+out/
+out_all/
+*.class
+
+# Local application data
+data/
+*.ser
+
+# Logs
+*.log
+
+# IntelliJ IDEA
+.idea/
+*.iml
+
+# VS Code
+.vscode/
+
+# Eclipse
+.classpath
+.project
+.settings/
+
+# NetBeans
+nbproject/private/
+build/
+dist/
+
+# OS files
+.DS_Store
+Thumbs.db

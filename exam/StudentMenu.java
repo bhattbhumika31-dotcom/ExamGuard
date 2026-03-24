@@ -1,6 +1,5 @@
-package student;
-
 import java.util.Scanner;
+import model.Exam;
 
 public class StudentMenu {
 
@@ -8,13 +7,19 @@ public class StudentMenu {
         Scanner scanner = new Scanner(System.in);
         StudentService service = new StudentService();
 
-       
         System.out.println("      Welcome to ExamGuard       ");
-        
 
-        //  input
         System.out.print("Enter your Student ID: ");
         String studentId = scanner.nextLine();
+
+        System.out.print("Enter your Name: ");
+        String studentName = scanner.nextLine();
+
+        System.out.println("\nAvailable Exams:");
+        for (Exam exam : service.getAvailableExams()) {
+            System.out.println("- " + exam.getExamId() + " | " + exam.getTitle()
+                + " | " + exam.getSubject());
+        }
 
         System.out.print("Enter Exam ID: ");
         String examId = scanner.nextLine();
@@ -26,11 +31,11 @@ public class StudentMenu {
         scanner.nextLine(); // clear buffer
 
         if (choice == 1) {
-            service.startExam(studentId, examId);
+            service.startExam(studentId, studentName, examId);
         } else {
             System.out.println("Invalid choice. Please try again.");
         }
 
         scanner.close();
-    }//,
-}//
+    }
+}
