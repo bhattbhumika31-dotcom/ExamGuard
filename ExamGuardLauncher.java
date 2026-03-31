@@ -9,12 +9,15 @@ public final class ExamGuardLauncher {
 
     public static void main(String[] args) {
         SwingUtilities.invokeLater(() -> {
-            TeacherDashboard teacherDashboard = new TeacherDashboard("T001", "Bhumika Bhatt");
-            teacherDashboard.setVisible(true);
+            TeacherDashboard.launch(null, null);
 
-            StudentDashboard studentDashboard = new StudentDashboard();
-            studentDashboard.setLocation(teacherDashboard.getX() + 80, teacherDashboard.getY() + 60);
-            studentDashboard.setVisible(true);
+            try {
+                StudentDashboard studentDashboard = new StudentDashboard();
+                studentDashboard.setLocation(140, 90);
+                studentDashboard.setVisible(true);
+            } catch (IllegalStateException ex) {
+                System.out.println(ex.getMessage());
+            }
         });
     }
 }

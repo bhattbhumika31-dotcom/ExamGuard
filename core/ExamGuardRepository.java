@@ -74,6 +74,7 @@ public final class ExamGuardRepository {
                 && existing.getStudentId().equals(result.getStudentId()));
         resultStore.add(result);
         persistResults();
+        DatabaseAuthenticator.saveStudentMark(result);
     }
 
     public synchronized List<Result> getResultsForStudent(String studentId) {

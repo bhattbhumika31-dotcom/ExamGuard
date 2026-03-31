@@ -1,3 +1,4 @@
+import core.DatabaseAuthenticator;
 import model.Exam;
 import model.Result;
 
@@ -71,6 +72,9 @@ public class StudentDashboard extends JFrame {
         add(main);
 
         captureStudentProfile();
+        if (studentId == null) {
+            throw new IllegalStateException("Student access denied.");
+        }
         refreshExamTable();
     }
 
@@ -175,17 +179,50 @@ public class StudentDashboard extends JFrame {
     }
 
     private void captureStudentProfile() {
-        String enteredId = promptValue("Enter Student ID:", studentId == null ? "S001" : studentId);
-        String enteredName = promptValue("Enter Student Name:", studentName == null ? "Student" : studentName);
+        while (true) {
+            String enteredId = promptValue("Enter Student ID:", studentId == null ? "S001" : studentId);
+            if (enteredId == null) {
+                JOptionPane.showMessageDialog(this,
+                    "Student access was cancelled.",
+                    "Access Cancelled",
+                    JOptionPane.WARNING_MESSAGE);
+                return;
+            }
 
-        this.studentId = enteredId;
-        this.studentName = enteredName;
-        userLabel.setText(studentName + " (" + studentId + ")");
+            String enteredName = promptValue("Enter Student Name (optional):", studentName == null ? "" : studentName);
+            if (enteredName == null) {
+                enteredName = "";
+            }
+
+            List<Object> studentRecord = DatabaseAuthenticator.findStudent(enteredId, enteredName);
+            if (studentRecord != null) {
+                String resolvedStudentName = DatabaseAuthenticator.getColumnValue(studentRecord, "name");
+
+                this.studentId = enteredId;
+                this.studentName = resolvedStudentName != null && !resolvedStudentName.isBlank()
+                    ? resolvedStudentName
+                    : enteredName;
+                userLabel.setText(studentName + " (" + studentId + ")");
+                JOptionPane.showMessageDialog(this,
+                    "Access approved. Welcome, " + studentName + "!",
+                    "Student Verified",
+                    JOptionPane.INFORMATION_MESSAGE);
+                return;
+            }
+
+            JOptionPane.showMessageDialog(this,
+                "Access denied. Student record was not found in the database.",
+                "Unauthorized Student",
+                JOptionPane.ERROR_MESSAGE);
+        }
     }
 
     private String promptValue(String prompt, String initialValue) {
         String value = JOptionPane.showInputDialog(this, prompt, initialValue);
-        if (value == null || value.isBlank()) {
+        if (value == null) {
+            return null;
+        }
+        if (value.isBlank()) {
             return initialValue;
         }
         return value.trim();
@@ -259,6 +296,12 @@ public class StudentDashboard extends JFrame {
     }
 
     public static void main(String[] args) {
-        SwingUtilities.invokeLater(() -> new StudentDashboard().setVisible(true));
+        SwingUtilities.invokeLater(() -> {
+            try {
+                new StudentDashboard().setVisible(true);
+            } catch (IllegalStateException ex) {
+                System.out.println(ex.getMessage());
+            }
+        });
     }
 }
