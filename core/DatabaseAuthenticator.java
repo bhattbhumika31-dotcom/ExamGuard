@@ -81,10 +81,10 @@ public final class DatabaseAuthenticator {
             studentClass = 0;
         }
 
-        String statusText = result.getPercentage() > 33.0 ? "passed" : "failed";
+        boolean passed = result.getPercentage() > 33.0;
 
-        String sql = "INSERT INTO marks (name, ID, class, marks, status) VALUES (?, ?, ?, ?, ?) "
-                + "ON DUPLICATE KEY UPDATE name = VALUES(name), class = VALUES(class), marks = VALUES(marks), status = VALUES(status)";
+        String sql = "INSERT INTO marks (name, `ID`, `class`, marks, status) VALUES (?, ?, ?, ?, ?) "
+                + "ON DUPLICATE KEY UPDATE name = VALUES(name), `class` = VALUES(`class`), marks = VALUES(marks), status = VALUES(status)";
 
         try {
             Class.forName("com.mysql.cj.jdbc.Driver");
@@ -95,11 +95,11 @@ public final class DatabaseAuthenticator {
                 stmt.setInt(2, studentId);
                 stmt.setInt(3, studentClass);
                 stmt.setDouble(4, result.getScore());
-                stmt.setString(5, statusText);
+                stmt.setBoolean(5, passed);
                 stmt.executeUpdate();
 
                 System.out.println("Stored marks in database for " + studentName
-                        + " [ID=" + studentId + "]: " + result.getScore() + " (" + statusText + ")");
+                        + " [ID=" + studentId + "]: " + result.getScore() + " (passed=" + passed + ")");
             }
         } catch (Exception e) {
             System.out.println("Failed to store marks for student ID '" + result.getStudentId() + "': " + e.getMessage());

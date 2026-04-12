@@ -24,6 +24,8 @@ import java.util.List;
 
 public class StudentDashboard extends JFrame {
 
+    private static final int STATUS_COLUMN_INDEX = 7;
+
     private final StudentService studentService = new StudentService();
     private final DefaultTableModel tableModel;
     private final JTable table;
@@ -44,7 +46,7 @@ public class StudentDashboard extends JFrame {
         JPanel sidebar = buildSidebar();
         JPanel topBar = buildTopBar();
 
-        String[] columns = {"Exam ID", "Title", "Subject", "Duration", "Questions", "Total Marks", "Teacher"};
+        String[] columns = {"Exam ID", "Title", "Subject", "Duration", "Questions", "Total Marks", "Teacher", "Status"};
         tableModel = new DefaultTableModel(columns, 0) {
             @Override
             public boolean isCellEditable(int row, int column) {
@@ -122,7 +124,7 @@ public class StudentDashboard extends JFrame {
         title.setForeground(Color.WHITE);
         title.setFont(new Font("Segoe UI", Font.BOLD, 24));
 
-        JLabel subtitle = new JLabel("Browse active exams and submit attempts directly into teacher analytics");
+        JLabel subtitle = new JLabel("Timer starts with the exam, auto-submits on timeout, and locks after submission");
         subtitle.setForeground(Color.LIGHT_GRAY);
 
         titleBlock.add(title);
@@ -239,7 +241,8 @@ public class StudentDashboard extends JFrame {
                 exam.getDurationMinutes() + " min",
                 exam.getQuestions().size(),
                 exam.getTotalMarks(),
-                exam.getCreatedByTeacherName()
+                exam.getCreatedByTeacherName(),
+                studentService.getExamStatus(studentId, exam.getExamId())
             });
         }
     }
@@ -252,8 +255,19 @@ public class StudentDashboard extends JFrame {
         }
 
         String examId = tableModel.getValueAt(row, 0).toString();
+        String examStatus = tableModel.getValueAt(row, STATUS_COLUMN_INDEX).toString();
+        if ("Submitted".equalsIgnoreCase(examStatus) || studentService.hasSubmittedExam(studentId, examId)) {
+            JOptionPane.showMessageDialog(this,
+                "This exam has already been submitted. Re-attempts are not allowed.",
+                "Attempt Locked",
+                JOptionPane.INFORMATION_MESSAGE);
+            refreshExamTable();
+            return;
+        }
+
         Result result = studentService.startExamWithDialog(this, studentId, studentName, examId);
         if (result != null) {
+            refreshExamTable();
             showResultsDialog();
         }
     }

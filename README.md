@@ -49,7 +49,7 @@ ExamGuard/
 Run this from the project root:
 
 ```powershell
-javac -d out_all ExamGuardLauncher.java core\*.java exam\*.java Teacher\model\*.java Teacher\teacher\*.java Teacher\teacher\panels\*.java
+javac -cp "lib\mysql-connector-j-9.6.0.jar;." -d out_all ExamGuardLauncher.java core\*.java exam\*.java Teacher\model\*.java Teacher\teacher\*.java Teacher\teacher\panels\*.java
 ```
 
 ## Run
@@ -57,19 +57,19 @@ javac -d out_all ExamGuardLauncher.java core\*.java exam\*.java Teacher\model\*.
 ### Run both teacher and student modules
 
 ```powershell
-java -cp out_all ExamGuardLauncher
+java -cp "out_all;lib\mysql-connector-j-9.6.0.jar" ExamGuardLauncher
 ```
 
 ### Run only the teacher panel
 
 ```powershell
-java -cp out_all teacher.TeacherDashboard
+java -cp "out_all;lib\mysql-connector-j-9.6.0.jar" teacher.TeacherDashboard
 ```
 
 ### Run only the student panel
 
 ```powershell
-java -cp out_all StudentDashboard
+java -cp "out_all;lib\mysql-connector-j-9.6.0.jar" StudentDashboard
 ```
 
 ## How It Works
@@ -114,6 +114,7 @@ Teacher actions update the shared exam store, and student submissions update the
 - Students only see exams that are marked `ACTIVE`.
 - Results are stored locally in the `data` folder.
 - If you change the code, recompile before running again.
+- In PowerShell, keep the classpath in quotes because `;` is a command separator.
 
 ## Future Improvements
 
