@@ -1,3 +1,5 @@
+package exam;
+
 import model.Exam;
 import model.Result;
 
@@ -136,11 +138,11 @@ public class StudentDashboard extends JFrame {
         userLabel = new JLabel();
         userLabel.setForeground(Color.WHITE);
 
-        JButton logout = new JButton("Change Student");
+        JButton logout = new JButton("Logout");
         styleAction(logout, new Color(220, 53, 69));
         logout.addActionListener(event -> {
-            captureStudentProfile();
-            refreshExamTable();
+            dispose();
+            System.exit(0);
         });
 
         right.add(role);

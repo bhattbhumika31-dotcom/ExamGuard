@@ -146,7 +146,7 @@ public class TeacherDashboard extends JFrame {
         bar.setPreferredSize(new Dimension(0, 58));
 
         // Logo
-        JLabel logo = new JLabel("⬛ ExamGuard");
+        JLabel logo = new JLabel("ExamGuard");
         logo.setFont(new Font("Segoe UI", Font.BOLD, 18));
         logo.setForeground(UITheme.ACCENT_BLUE);
         bar.add(logo, BorderLayout.WEST);
@@ -207,9 +207,9 @@ public class TeacherDashboard extends JFrame {
         nav.setBorder(new EmptyBorder(0, 16, 10, 0));
         sidebar.add(nav);
 
-        btnExams     = makeSidebarButton("📋  Exams",      0);
-        btnQuestions = makeSidebarButton("❓  Questions",  1);
-        btnAnalytics = makeSidebarButton("📊  Analytics",  2);
+        btnExams     = makeSidebarButton("Exams",      0);
+        btnQuestions = makeSidebarButton("Questions",  1);
+        btnAnalytics = makeSidebarButton("Analytics",  2);
 
         sidebar.add(btnExams);
         sidebar.add(Box.createVerticalStrut(4));

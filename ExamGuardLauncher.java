@@ -1,20 +1,40 @@
+import auth.AuthenticationService;
+import auth.AuthenticationDialog;
+import auth.RoleSelectionDialog;
+import auth.User;
+import auth.UserRole;
 import teacher.TeacherDashboard;
 
-import javax.swing.SwingUtilities;
+import javax.swing.*;
 
-public final class ExamGuardLauncher {
+public class ExamGuardLauncher {
 
     private ExamGuardLauncher() {
     }
 
     public static void main(String[] args) {
         SwingUtilities.invokeLater(() -> {
-            TeacherDashboard teacherDashboard = new TeacherDashboard("T001", "Bhumika Bhatt");
-            teacherDashboard.setVisible(true);
+            RoleSelectionDialog roleDialog = new RoleSelectionDialog(null);
+            roleDialog.setVisible(true);
 
-            StudentDashboard studentDashboard = new StudentDashboard();
-            studentDashboard.setLocation(teacherDashboard.getX() + 80, teacherDashboard.getY() + 60);
-            studentDashboard.setVisible(true);
+            UserRole selectedRole = roleDialog.getSelectedRole();
+            if (selectedRole == null) {
+                System.exit(0);
+            }
+
+            AuthenticationDialog authDialog = new AuthenticationDialog(null, selectedRole);
+            authDialog.setVisible(true);
+
+            User user = authDialog.getAuthenticatedUser();
+            if (user != null) {
+                if (user.getRole() == UserRole.TEACHER) {
+                    TeacherDashboard teacherDashboard = new TeacherDashboard(user.getUserId(), user.getFullName());
+                    teacherDashboard.setVisible(true);
+                } else if (user.getRole() == UserRole.STUDENT) {
+                    StudentDashboard studentDashboard = new StudentDashboard();
+                    studentDashboard.setVisible(true);
+                }
+            }
         });
     }
 }

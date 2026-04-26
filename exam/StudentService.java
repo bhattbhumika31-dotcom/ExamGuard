@@ -1,3 +1,5 @@
+package exam;
+
 import core.ExamGuardRepository;
 import model.Exam;
 import model.Question;
