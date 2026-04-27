@@ -1,3 +1,5 @@
+package exam;
+
 import core.ExamGuardRepository;
 import core.ExamProgressStore;
 import model.Exam;

@@ -1,3 +1,6 @@
+package exam;
+
+import auth.AuthenticationWindow;
 import core.DatabaseAuthenticator;
 import model.Exam;
 import model.Result;

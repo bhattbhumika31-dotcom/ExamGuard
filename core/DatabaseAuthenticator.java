@@ -35,24 +35,85 @@ public final class DatabaseAuthenticator {
         return findRecord("students", studentId, studentName);
     }
 
-    public static AuthResult findUserById(String userId) {
-        if (userId == null || userId.isBlank()) {
+    public static AuthResult authenticateUser(String userId, String password) {
+        if (userId == null || userId.isBlank() || password == null || password.isBlank()) {
             return null;
         }
 
         String trimmedId = userId.trim();
-        List<Object> studentRecord = findStudent(trimmedId, "");
+        String trimmedPassword = password;
+
+        List<Object> studentRecord = findRecordByIdAndPassword("students", trimmedId, trimmedPassword);
         if (studentRecord != null) {
             String resolvedName = getColumnValue(studentRecord, "name");
             return new AuthResult(UserRole.STUDENT, trimmedId,
                     resolvedName == null ? "" : resolvedName);
         }
 
-        List<Object> teacherRecord = findTeacher(trimmedId, "");
+        List<Object> teacherRecord = findRecordByIdAndPassword("teachers", trimmedId, trimmedPassword);
         if (teacherRecord != null) {
             String resolvedName = getColumnValue(teacherRecord, "name");
             return new AuthResult(UserRole.TEACHER, trimmedId,
                     resolvedName == null ? "" : resolvedName);
+        }
+
+        return null;
+    }
+
+    private static List<Object> findRecordByIdAndPassword(String table, String userId, String password) {
+        String safeTable = resolveTable(table);
+        String trimmedId = userId == null ? "" : userId.trim();
+        String trimmedPassword = password == null ? "" : password;
+        Integer numericId = extractNumericId(trimmedId);
+
+        if (trimmedId.isBlank() || trimmedPassword.isBlank()) {
+            return null;
+        }
+
+        List<Object> parameters = new ArrayList<>();
+        StringBuilder sql = new StringBuilder("SELECT * FROM ")
+            .append(safeTable)
+            .append(" WHERE (");
+
+        sql.append("CAST(id AS CHAR) = ?");
+        parameters.add(trimmedId);
+        if (numericId != null) {
+            sql.append(" OR id = ?");
+            parameters.add(numericId);
+        }
+
+        sql.append(") AND BINARY password = ? LIMIT 1");
+        parameters.add(trimmedPassword);
+
+        try {
+            Class.forName("com.mysql.cj.jdbc.Driver");
+            try (Connection conn = DriverManager.getConnection(URL, USER, PASSWORD);
+                 PreparedStatement stmt = conn.prepareStatement(sql.toString())) {
+
+                for (int i = 0; i < parameters.size(); i++) {
+                    Object value = parameters.get(i);
+                    if (value instanceof Integer) {
+                        stmt.setInt(i + 1, (Integer) value);
+                    } else {
+                        stmt.setString(i + 1, String.valueOf(value));
+                    }
+                }
+
+                try (ResultSet rs = stmt.executeQuery()) {
+                    if (rs.next()) {
+                        List<Object> data = new ArrayList<>();
+                        ResultSetMetaData metaData = rs.getMetaData();
+                        for (int i = 1; i <= metaData.getColumnCount(); i++) {
+                            data.add(metaData.getColumnLabel(i) + "=" + rs.getObject(i));
+                        }
+                        System.out.println("Database authenticated record from " + safeTable + ": " + data);
+                        return data;
+                    }
+                }
+            }
+        } catch (Exception e) {
+            System.out.println("Database lookup failed for table '" + safeTable + "': " + e.getMessage());
+            e.printStackTrace();
         }
 
         return null;

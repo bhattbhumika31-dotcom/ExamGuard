@@ -1,3 +1,5 @@
+package exam;
+
 import java.util.Scanner;
 import model.Exam;
 

@@ -1,3 +1,4 @@
+import auth.AuthenticationWindow;
 import javax.swing.SwingUtilities;
 
 public final class ExamGuardLauncher {
