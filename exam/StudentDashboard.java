@@ -34,7 +34,11 @@ public class StudentDashboard extends JFrame {
     private String studentName;
     private JLabel userLabel;
 
-    public StudentDashboard() {
+    public StudentDashboard(String enteredStudentId) {
+        this(enteredStudentId, null);
+    }
+
+    public StudentDashboard(String enteredStudentId, String enteredStudentName) {
         setTitle("ExamGuard - Student Dashboard");
         setSize(1100, 680);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
@@ -73,7 +77,7 @@ public class StudentDashboard extends JFrame {
         main.add(center, BorderLayout.CENTER);
         add(main);
 
-        captureStudentProfile();
+        authenticateStudent(enteredStudentId, enteredStudentName);
         if (studentId == null) {
             throw new IllegalStateException("Student access denied.");
         }
@@ -145,8 +149,8 @@ public class StudentDashboard extends JFrame {
         JButton logout = new JButton("Change Student");
         styleAction(logout, new Color(220, 53, 69));
         logout.addActionListener(event -> {
-            captureStudentProfile();
-            refreshExamTable();
+            dispose();
+            AuthenticationWindow.launch();
         });
 
         right.add(role);
@@ -180,54 +184,24 @@ public class StudentDashboard extends JFrame {
         return bar;
     }
 
-    private void captureStudentProfile() {
-        while (true) {
-            String enteredId = promptValue("Enter Student ID:", studentId == null ? "S001" : studentId);
-            if (enteredId == null) {
-                JOptionPane.showMessageDialog(this,
-                    "Student access was cancelled.",
-                    "Access Cancelled",
-                    JOptionPane.WARNING_MESSAGE);
-                return;
-            }
-
-            String enteredName = promptValue("Enter Student Name (optional):", studentName == null ? "" : studentName);
-            if (enteredName == null) {
-                enteredName = "";
-            }
-
-            List<Object> studentRecord = DatabaseAuthenticator.findStudent(enteredId, enteredName);
-            if (studentRecord != null) {
-                String resolvedStudentName = DatabaseAuthenticator.getColumnValue(studentRecord, "name");
-
-                this.studentId = enteredId;
-                this.studentName = resolvedStudentName != null && !resolvedStudentName.isBlank()
-                    ? resolvedStudentName
-                    : enteredName;
-                userLabel.setText(studentName + " (" + studentId + ")");
-                JOptionPane.showMessageDialog(this,
-                    "Access approved. Welcome, " + studentName + "!",
-                    "Student Verified",
-                    JOptionPane.INFORMATION_MESSAGE);
-                return;
-            }
-
-            JOptionPane.showMessageDialog(this,
-                "Access denied. Student record was not found in the database.",
-                "Unauthorized Student",
-                JOptionPane.ERROR_MESSAGE);
+    private void authenticateStudent(String enteredId, String enteredName) {
+        if (enteredId == null || enteredId.isBlank()) {
+            throw new IllegalArgumentException("Student ID is required.");
         }
-    }
 
-    private String promptValue(String prompt, String initialValue) {
-        String value = JOptionPane.showInputDialog(this, prompt, initialValue);
-        if (value == null) {
-            return null;
+        String trimmedId = enteredId.trim();
+        String trimmedName = enteredName == null ? "" : enteredName.trim();
+        List<Object> studentRecord = DatabaseAuthenticator.findStudent(trimmedId, trimmedName);
+        if (studentRecord == null) {
+            throw new IllegalStateException("Student access denied for ID: " + trimmedId);
         }
-        if (value.isBlank()) {
-            return initialValue;
-        }
-        return value.trim();
+
+        String resolvedStudentName = DatabaseAuthenticator.getColumnValue(studentRecord, "name");
+        this.studentId = trimmedId;
+        this.studentName = resolvedStudentName != null && !resolvedStudentName.isBlank()
+            ? resolvedStudentName
+            : trimmedName;
+        userLabel.setText(studentName + " (" + studentId + ")");
     }
 
     private void refreshExamTable() {
@@ -310,12 +284,6 @@ public class StudentDashboard extends JFrame {
     }
 
     public static void main(String[] args) {
-        SwingUtilities.invokeLater(() -> {
-            try {
-                new StudentDashboard().setVisible(true);
-            } catch (IllegalStateException ex) {
-                System.out.println(ex.getMessage());
-            }
-        });
+        SwingUtilities.invokeLater(AuthenticationWindow::launch);
     }
 }

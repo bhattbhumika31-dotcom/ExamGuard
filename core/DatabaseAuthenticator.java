@@ -35,6 +35,58 @@ public final class DatabaseAuthenticator {
         return findRecord("students", studentId, studentName);
     }
 
+    public static AuthResult findUserById(String userId) {
+        if (userId == null || userId.isBlank()) {
+            return null;
+        }
+
+        String trimmedId = userId.trim();
+        List<Object> studentRecord = findStudent(trimmedId, "");
+        if (studentRecord != null) {
+            String resolvedName = getColumnValue(studentRecord, "name");
+            return new AuthResult(UserRole.STUDENT, trimmedId,
+                    resolvedName == null ? "" : resolvedName);
+        }
+
+        List<Object> teacherRecord = findTeacher(trimmedId, "");
+        if (teacherRecord != null) {
+            String resolvedName = getColumnValue(teacherRecord, "name");
+            return new AuthResult(UserRole.TEACHER, trimmedId,
+                    resolvedName == null ? "" : resolvedName);
+        }
+
+        return null;
+    }
+
+    public enum UserRole {
+        STUDENT,
+        TEACHER
+    }
+
+    public static final class AuthResult {
+        private final UserRole role;
+        private final String id;
+        private final String name;
+
+        public AuthResult(UserRole role, String id, String name) {
+            this.role = role;
+            this.id = id;
+            this.name = name;
+        }
+
+        public UserRole getRole() {
+            return role;
+        }
+
+        public String getId() {
+            return id;
+        }
+
+        public String getName() {
+            return name;
+        }
+    }
+
     public static String getColumnValue(List<Object> record, String columnName) {
         if (record == null || columnName == null || columnName.isBlank()) {
             return null;
