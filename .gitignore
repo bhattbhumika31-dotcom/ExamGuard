@@ -5,6 +5,7 @@ out_all/
 
 # Local application data
 data/
+lib/
 *.ser
 
 # Logs

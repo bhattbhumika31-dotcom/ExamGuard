@@ -1,5 +1,6 @@
 package teacher;
 
+import core.DatabaseAuthenticator;
 import core.ExamGuardRepository;
 import model.Exam;
 import model.Result;
@@ -72,8 +73,21 @@ public class TeacherDashboard extends JFrame {
     // ------------------------------------------------------------------ //
 
     public TeacherDashboard(String teacherId, String teacherName) {
+        List<Object> teacherRecord = DatabaseAuthenticator.findTeacher(teacherId, teacherName);
+        if (teacherRecord == null) {
+            JOptionPane.showMessageDialog(null,
+                    "Access denied. Teacher record was not found in the database.",
+                    "Unauthorized Teacher",
+                    JOptionPane.ERROR_MESSAGE);
+            throw new IllegalStateException("Teacher access denied for: " + teacherId);
+        }
+
+        String resolvedTeacherName = DatabaseAuthenticator.getColumnValue(teacherRecord, "name");
+
         this.teacherId   = teacherId;
-        this.teacherName = teacherName;
+        this.teacherName = resolvedTeacherName != null && !resolvedTeacherName.isBlank()
+                ? resolvedTeacherName
+                : teacherName;
         this.repository  = ExamGuardRepository.getInstance();
 
         this.examManager     = new ExamManager();
@@ -322,15 +336,46 @@ public class TeacherDashboard extends JFrame {
      * In the full system this is called by the AUTH module.
      */
     public static void launch(String teacherId, String teacherName) {
-        SwingUtilities.invokeLater(() -> {
-            TeacherDashboard dashboard = new TeacherDashboard(teacherId, teacherName);
-            dashboard.setVisible(true);
-        });
+        Runnable openDashboard = () -> {
+            String resolvedTeacherId = teacherId;
+            String resolvedTeacherName = teacherName;
+
+            if (resolvedTeacherId == null || resolvedTeacherId.isBlank()) {
+                resolvedTeacherId = JOptionPane.showInputDialog(null, "Enter Teacher ID:", "T001");
+            }
+            if (resolvedTeacherName == null || resolvedTeacherName.isBlank()) {
+                resolvedTeacherName = JOptionPane.showInputDialog(null, "Enter Teacher Name (optional):", "");
+            }
+
+            if (resolvedTeacherId == null || resolvedTeacherId.isBlank()) {
+                JOptionPane.showMessageDialog(null,
+                        "Teacher access was cancelled.",
+                        "Access Cancelled",
+                        JOptionPane.WARNING_MESSAGE);
+                return;
+            }
+
+            if (resolvedTeacherName == null) {
+                resolvedTeacherName = "";
+            }
+
+            try {
+                TeacherDashboard dashboard = new TeacherDashboard(resolvedTeacherId.trim(), resolvedTeacherName.trim());
+                dashboard.setVisible(true);
+            } catch (IllegalStateException ex) {
+                System.out.println(ex.getMessage());
+            }
+        };
+
+        if (SwingUtilities.isEventDispatchThread()) {
+            openDashboard.run();
+        } else {
+            SwingUtilities.invokeLater(openDashboard);
+        }
     }
 
     /** Quick standalone test — remove when integrating with AUTH. */
     public static void main(String[] args) {
-        // Seed some demo data so the dashboard looks populated on first run
-        TeacherDashboard.launch("T001", "Bhumika Bhatt");
+        TeacherDashboard.launch(null, null);
     }
 }

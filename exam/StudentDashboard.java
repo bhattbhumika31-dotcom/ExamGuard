@@ -1,3 +1,7 @@
+package exam;
+
+import auth.AuthenticationWindow;
+import core.DatabaseAuthenticator;
 import model.Exam;
 import model.Result;
 
@@ -23,6 +27,8 @@ import java.util.List;
 
 public class StudentDashboard extends JFrame {
 
+    private static final int STATUS_COLUMN_INDEX = 7;
+
     private final StudentService studentService = new StudentService();
     private final DefaultTableModel tableModel;
     private final JTable table;
@@ -31,7 +37,11 @@ public class StudentDashboard extends JFrame {
     private String studentName;
     private JLabel userLabel;
 
-    public StudentDashboard() {
+    public StudentDashboard(String enteredStudentId) {
+        this(enteredStudentId, null);
+    }
+
+    public StudentDashboard(String enteredStudentId, String enteredStudentName) {
         setTitle("ExamGuard - Student Dashboard");
         setSize(1100, 680);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
@@ -43,7 +53,7 @@ public class StudentDashboard extends JFrame {
         JPanel sidebar = buildSidebar();
         JPanel topBar = buildTopBar();
 
-        String[] columns = {"Exam ID", "Title", "Subject", "Duration", "Questions", "Total Marks", "Teacher"};
+        String[] columns = {"Exam ID", "Title", "Subject", "Duration", "Questions", "Total Marks", "Teacher", "Status"};
         tableModel = new DefaultTableModel(columns, 0) {
             @Override
             public boolean isCellEditable(int row, int column) {
@@ -70,7 +80,10 @@ public class StudentDashboard extends JFrame {
         main.add(center, BorderLayout.CENTER);
         add(main);
 
-        captureStudentProfile();
+        authenticateStudent(enteredStudentId, enteredStudentName);
+        if (studentId == null) {
+            throw new IllegalStateException("Student access denied.");
+        }
         refreshExamTable();
     }
 
@@ -118,7 +131,7 @@ public class StudentDashboard extends JFrame {
         title.setForeground(Color.WHITE);
         title.setFont(new Font("Segoe UI", Font.BOLD, 24));
 
-        JLabel subtitle = new JLabel("Browse active exams and submit attempts directly into teacher analytics");
+        JLabel subtitle = new JLabel("Timer starts with the exam, auto-submits on timeout, and locks after submission");
         subtitle.setForeground(Color.LIGHT_GRAY);
 
         titleBlock.add(title);
@@ -139,8 +152,8 @@ public class StudentDashboard extends JFrame {
         JButton logout = new JButton("Change Student");
         styleAction(logout, new Color(220, 53, 69));
         logout.addActionListener(event -> {
-            captureStudentProfile();
-            refreshExamTable();
+            dispose();
+            AuthenticationWindow.launch();
         });
 
         right.add(role);
@@ -174,21 +187,24 @@ public class StudentDashboard extends JFrame {
         return bar;
     }
 
-    private void captureStudentProfile() {
-        String enteredId = promptValue("Enter Student ID:", studentId == null ? "S001" : studentId);
-        String enteredName = promptValue("Enter Student Name:", studentName == null ? "Student" : studentName);
-
-        this.studentId = enteredId;
-        this.studentName = enteredName;
-        userLabel.setText(studentName + " (" + studentId + ")");
-    }
-
-    private String promptValue(String prompt, String initialValue) {
-        String value = JOptionPane.showInputDialog(this, prompt, initialValue);
-        if (value == null || value.isBlank()) {
-            return initialValue;
+    private void authenticateStudent(String enteredId, String enteredName) {
+        if (enteredId == null || enteredId.isBlank()) {
+            throw new IllegalArgumentException("Student ID is required.");
         }
-        return value.trim();
+
+        String trimmedId = enteredId.trim();
+        String trimmedName = enteredName == null ? "" : enteredName.trim();
+        List<Object> studentRecord = DatabaseAuthenticator.findStudent(trimmedId, trimmedName);
+        if (studentRecord == null) {
+            throw new IllegalStateException("Student access denied for ID: " + trimmedId);
+        }
+
+        String resolvedStudentName = DatabaseAuthenticator.getColumnValue(studentRecord, "name");
+        this.studentId = trimmedId;
+        this.studentName = resolvedStudentName != null && !resolvedStudentName.isBlank()
+            ? resolvedStudentName
+            : trimmedName;
+        userLabel.setText(studentName + " (" + studentId + ")");
     }
 
     private void refreshExamTable() {
@@ -202,7 +218,8 @@ public class StudentDashboard extends JFrame {
                 exam.getDurationMinutes() + " min",
                 exam.getQuestions().size(),
                 exam.getTotalMarks(),
-                exam.getCreatedByTeacherName()
+                exam.getCreatedByTeacherName(),
+                studentService.getExamStatus(studentId, exam.getExamId())
             });
         }
     }
@@ -215,8 +232,19 @@ public class StudentDashboard extends JFrame {
         }
 
         String examId = tableModel.getValueAt(row, 0).toString();
+        String examStatus = tableModel.getValueAt(row, STATUS_COLUMN_INDEX).toString();
+        if ("Submitted".equalsIgnoreCase(examStatus) || studentService.hasSubmittedExam(studentId, examId)) {
+            JOptionPane.showMessageDialog(this,
+                "This exam has already been submitted. Re-attempts are not allowed.",
+                "Attempt Locked",
+                JOptionPane.INFORMATION_MESSAGE);
+            refreshExamTable();
+            return;
+        }
+
         Result result = studentService.startExamWithDialog(this, studentId, studentName, examId);
         if (result != null) {
+            refreshExamTable();
             showResultsDialog();
         }
     }
@@ -259,6 +287,6 @@ public class StudentDashboard extends JFrame {
     }
 
     public static void main(String[] args) {
-        SwingUtilities.invokeLater(() -> new StudentDashboard().setVisible(true));
+        SwingUtilities.invokeLater(AuthenticationWindow::launch);
     }
 }

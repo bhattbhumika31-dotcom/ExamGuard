@@ -68,12 +68,17 @@ public final class ExamGuardRepository {
         saveObject(RESULTS_FILE, resultStore);
     }
 
-    public synchronized void addOrUpdateResult(Result result) {
-        resultStore.removeIf(existing ->
-            existing.getExamId().equals(result.getExamId())
-                && existing.getStudentId().equals(result.getStudentId()));
+    public synchronized boolean addOrUpdateResult(Result result) {
+        if (result == null) {
+            return false;
+        }
+        if (hasResultForStudentExam(result.getStudentId(), result.getExamId())) {
+            return false;
+        }
         resultStore.add(result);
         persistResults();
+        DatabaseAuthenticator.saveStudentMark(result);
+        return true;
     }
 
     public synchronized List<Result> getResultsForStudent(String studentId) {
@@ -81,6 +86,21 @@ public final class ExamGuardRepository {
             .filter(result -> result.getStudentId().equals(studentId))
             .sorted(Comparator.comparing(Result::getAttemptDate).reversed())
             .collect(Collectors.toList());
+    }
+
+    public synchronized boolean hasResultForStudentExam(String studentId, String examId) {
+        return findResultForStudentExam(studentId, examId) != null;
+    }
+
+    public synchronized Result findResultForStudentExam(String studentId, String examId) {
+        if (studentId == null || studentId.isBlank() || examId == null || examId.isBlank()) {
+            return null;
+        }
+
+        return resultStore.stream()
+            .filter(result -> studentId.equals(result.getStudentId()) && examId.equals(result.getExamId()))
+            .findFirst()
+            .orElse(null);
     }
 
     @SuppressWarnings("unchecked")

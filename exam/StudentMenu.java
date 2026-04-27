@@ -1,3 +1,5 @@
+package exam;
+
 import java.util.Scanner;
 import model.Exam;
 
@@ -18,7 +20,8 @@ public class StudentMenu {
         System.out.println("\nAvailable Exams:");
         for (Exam exam : service.getAvailableExams()) {
             System.out.println("- " + exam.getExamId() + " | " + exam.getTitle()
-                + " | " + exam.getSubject());
+                + " | " + exam.getSubject()
+                + " | " + service.getExamStatus(studentId, exam.getExamId()));
         }
 
         System.out.print("Enter Exam ID: ");
